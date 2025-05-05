@@ -249,6 +249,9 @@ void B_input(struct pkt packet)
     if (TRACE > 0)
       printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
     
+    /* Count every correctly received packet */
+    packets_received++;
+    
     /* Calculate relative position to see if in window */
     relative_seq = (packet.seqnum - B_window_base + SEQSPACE) % SEQSPACE;
     
@@ -264,7 +267,6 @@ void B_input(struct pkt packet)
       if (packet.seqnum == expectedseqnum) {
         /* Deliver this packet */
         tolayer5(B, packet.payload);
-        packets_received++;
         
         /* Update expected sequence number */
         expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
@@ -274,7 +276,6 @@ void B_input(struct pkt packet)
           /* Deliver buffered packet */
           int relative_pos = (expectedseqnum - B_window_base + SEQSPACE) % SEQSPACE;
           tolayer5(B, B_buffer[relative_pos].payload);
-          packets_received++;
           
           /* Update expected sequence number */
           expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
