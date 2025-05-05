@@ -17,7 +17,7 @@
 
    Modifications:
    - Converted from Go-Back-N to Selective Repeat
-   - Individual packet timers instead of a single timer for first unacked packet
+   - Individual packet timers approximated with a single timer
    - Receiver buffers out-of-order packets
 **********************************************************************/
 
@@ -35,11 +35,7 @@ void B_init(void);
 void B_output(struct msg message);
 void B_timerinterrupt(void);
 
-/* generic procedure to compute the checksum of a packet.  Used by both sender and receiver
-   the simulator will overwrite part of your packet with 'z's.  It will not overwrite your
-   original checksum.  This procedure must generate a different checksum to the original if
-   the packet is corrupted.
-*/
+/* generic procedure to compute the checksum of a packet */
 int ComputeChecksum(struct pkt packet)
 {
   int checksum = 0;
@@ -120,9 +116,7 @@ void A_output(struct msg message)
   }
 }
 
-/* called from layer 3, when a packet arrives for layer 4
-   In this practical this will always be an ACK as B never sends data.
-*/
+/* called from layer 3, when a packet arrives for layer 4 */
 void A_input(struct pkt packet)
 {
   int i, pos;
@@ -190,7 +184,6 @@ void A_timerinterrupt(void)
     printf("----A: time out, resending packets!\n");
   
   /* Find the oldest unacked packet - should be at windowfirst */
-  /* In SR, we only resend the specific timed-out packet */
   if (windowcount > 0) {
     if (TRACE > 0)
       printf("---A: resending packet %d\n", buffer[windowfirst].seqnum);
@@ -212,10 +205,7 @@ void A_init(void)
   /* initialise A's window, buffer and sequence number */
   A_nextseqnum = 0;  /* A starts with seq num 0, do not change this */
   windowfirst = 0;
-  windowlast = -1;   /* windowlast is where the last packet sent is stored.
-                     new packets are placed in winlast + 1
-                     so initially this is set to -1
-                   */
+  windowlast = -1;   /* windowlast is where the last packet sent is stored */
   windowcount = 0;
   
   /* Initialize timer status and acked arrays */
@@ -235,7 +225,6 @@ static int B_nextseqnum;         /* the sequence number for the next packets sen
 static struct pkt B_buffer[WINDOWSIZE]; /* buffer for out-of-order packets */
 static int B_received[SEQSPACE]; /* tracks which packets have been received */
 static int B_window_base;        /* base sequence number of receiver window */
-static int correct_packets_received_at_B; /* Counter for all correct packet receptions */
 
 /* called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(struct pkt packet)
@@ -249,7 +238,6 @@ void B_input(struct pkt packet)
   if (!IsCorrupted(packet)) {
     if (TRACE > 0)
       printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
-    correct_packets_received_at_B++; /* Increment counter for every correct packet received */
     
     /* Calculate relative position to see if in window */
     relative_seq = (packet.seqnum - B_window_base + SEQSPACE) % SEQSPACE;
@@ -266,7 +254,7 @@ void B_input(struct pkt packet)
       if (packet.seqnum == expectedseqnum) {
         /* Deliver this packet */
         tolayer5(B, packet.payload);
-        packets_received++;
+        // Do not increment packets_received here; let simulator handle it
         
         /* Update expected sequence number */
         expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
@@ -276,7 +264,7 @@ void B_input(struct pkt packet)
           /* Deliver buffered packet */
           int relative_pos = (expectedseqnum - B_window_base + SEQSPACE) % SEQSPACE;
           tolayer5(B, B_buffer[relative_pos].payload);
-          packets_received++;
+          // Do not increment packets_received here; let simulator handle it
           
           /* Update expected sequence number */
           expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
@@ -334,7 +322,6 @@ void B_init(void)
   expectedseqnum = 0;
   B_nextseqnum = 1;
   B_window_base = 0;
-  correct_packets_received_at_B = 0; /* Initialize counter */
   
   /* Initialize receiver buffer status */
   for (i = 0; i < SEQSPACE; i++) {
@@ -346,14 +333,12 @@ void B_init(void)
  * The following functions need be completed only for bi-directional messages *
  *****************************************************************************/
 
-/* Note that with simplex transfer from a-to-B, there is no B_output() */
 void B_output(struct msg message)
 {
-  /* Not needed for this assignment, but implementation is required to avoid warnings */
+  /* Not needed for this assignment */
 }
 
-/* called when B's timer goes off */
 void B_timerinterrupt(void)
 {
-  /* Not needed for this assignment, but implementation is required to avoid warnings */
+  /* Not needed for this assignment */
 }
