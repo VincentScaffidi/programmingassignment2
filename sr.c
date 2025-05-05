@@ -264,7 +264,7 @@ void B_input(struct pkt packet)
     if (packet.seqnum == expectedseqnum) {
         /* Deliver this packet */
         tolayer5(B, packet.payload);
-        packets_received++;  // Only increment counter when delivering to application layer
+        packets_received++;  /* Only increment counter when delivering to application layer */
         
         /* Update expected sequence number */
         expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
@@ -274,7 +274,7 @@ void B_input(struct pkt packet)
             /* Deliver buffered packet */
             int relative_pos = (expectedseqnum - B_window_base + SEQSPACE) % SEQSPACE;
             tolayer5(B, B_buffer[relative_pos].payload);
-            packets_received++;  // Count each delivery
+            packets_received++;  /* Count each delivery */
             
             /* Update expected sequence number */
             expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
