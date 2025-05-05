@@ -122,57 +122,64 @@ void A_output(struct msg message)
 */
 void A_input(struct pkt packet)
 {
-  int ackcount = 0;
-  int i;
-
+  int i, pos;
+  
   /* if received ACK is not corrupted */
   if (!IsCorrupted(packet)) {
     if (TRACE > 0)
-      printf("----A: uncorrupted ACK %d is received\n",packet.acknum);
+      printf("----A: uncorrupted ACK %d is received\n", packet.acknum);
     total_ACKs_received++;
 
-    /* check if new ACK or duplicate */
+    /* check if ACK is within current window */
     if (windowcount != 0) {
-          int seqfirst = buffer[windowfirst].seqnum;
-          int seqlast = buffer[windowlast].seqnum;
-          /* check case when seqnum has and hasn't wrapped */
-          if (((seqfirst <= seqlast) && (packet.acknum >= seqfirst && packet.acknum <= seqlast)) ||
-              ((seqfirst > seqlast) && (packet.acknum >= seqfirst || packet.acknum <= seqlast))) {
-
-            /* packet is a new ACK */
-            if (TRACE > 0)
-              printf("----A: ACK %d is not a duplicate\n",packet.acknum);
-            new_ACKs++;
-
-            /* cumulative acknowledgement - determine how many packets are ACKed */
-            if (packet.acknum >= seqfirst)
-              ackcount = packet.acknum + 1 - seqfirst;
-            else
-              ackcount = SEQSPACE - seqfirst + packet.acknum;
-
-	    /* slide window by the number of packets ACKed */
-            windowfirst = (windowfirst + ackcount) % WINDOWSIZE;
-
-            /* delete the acked packets from window buffer */
-            for (i=0; i<ackcount; i++)
-              windowcount--;
-
-	    /* start timer again if there are still more unacked packets in window */
-            stoptimer(A);
-            if (windowcount > 0)
-              starttimer(A, RTT);
-
+      /* find if the ACK is for a packet in our window */
+      bool found = false;
+      for (i = 0; i < windowcount; i++) {
+        pos = (windowfirst + i) % WINDOWSIZE;
+        if (buffer[pos].seqnum == packet.acknum) {
+          found = true;
+          break;
+        }
+      }
+      
+      /* if ACK is in our window and not already ACKed */
+      if (found && acked[packet.acknum] == 0) {
+        if (TRACE > 0)
+          printf("----A: ACK %d is not a duplicate\n", packet.acknum);
+        new_ACKs++;
+        
+        /* Mark packet as ACKed */
+        acked[packet.acknum] = 1;
+        
+        /* Stop timer for this packet */
+        stoptimer(A);
+        timer_status[pos] = 0;
+        
+        /* If this is the base (windowfirst), move window forward over all consecutive ACKed packets */
+        if (pos == windowfirst) {
+          while (windowcount > 0 && acked[buffer[windowfirst].seqnum] == 1) {
+            windowfirst = (windowfirst + 1) % WINDOWSIZE;
+            windowcount--;
+          }
+          
+          /* If we still have packets, restart timer for the first unacked packet */
+          if (windowcount > 0) {
+            starttimer(A, RTT);
           }
         }
-        else
-          if (TRACE > 0)
-        printf ("----A: duplicate ACK received, do nothing!\n");
+      }
+      else if (TRACE > 0) {
+        printf("----A: duplicate ACK or ACK outside window received, do nothing!\n");
+      }
+    }
+    else if (TRACE > 0) {
+      printf("----A: ACK received but window is empty, do nothing!\n");
+    }
   }
-  else
-    if (TRACE > 0)
-      printf ("----A: corrupted ACK is received, do nothing!\n");
+  else if (TRACE > 0) {
+    printf("----A: corrupted ACK is received, do nothing!\n");
+  }
 }
-
 /* called when A's timer goes off */
 void A_timerinterrupt(void)
 {
