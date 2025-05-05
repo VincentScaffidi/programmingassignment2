@@ -83,10 +83,11 @@ void A_output(struct msg message)
 /* Called from layer 3, when a packet arrives for layer 4 */
 void A_input(struct pkt packet)
 {
+    int i;
     if (!IsCorrupted(packet)) {
         int acknum = packet.acknum;
         /* Mark the packet as acknowledged if it’s in the window */
-        for (int i = 0; i < windowcount; i++) {
+        for (i = 0; i < windowcount; i++) {
             if (buffer[i].packet.seqnum == acknum) {
                 if (TRACE > 0)
                     printf("----A: ACK %d received, marking packet as acked\n", acknum);
@@ -99,7 +100,7 @@ void A_input(struct pkt packet)
 
         /* Slide the window if possible */
         while (windowcount > 0 && buffer[0].is_acked) {
-            for (int i = 0; i < windowcount - 1; i++) {
+            for (i = 0; i < windowcount - 1; i++) {
                 buffer[i] = buffer[i + 1];
             }
             windowcount--;
@@ -118,9 +119,10 @@ void A_input(struct pkt packet)
 /* Called when A's timer goes off */
 void A_timerinterrupt(void)
 {
+    int i;
     if (TRACE > 0)
         printf("----A: time out, resend unacked packets!\n");
-    for (int i = 0; i < windowcount; i++) {
+    for (i = 0; i < windowcount; i++) {
         if (!buffer[i].is_acked) {
             if (TRACE > 0)
                 printf("---A: resending packet %d\n", buffer[i].packet.seqnum);
@@ -145,12 +147,13 @@ void A_init(void)
 /* Called from layer 3, when a packet arrives for layer 4 at B */
 void B_input(struct pkt packet)
 {
+    int i;
     if (!IsCorrupted(packet)) {
         int seqnum = packet.seqnum;
         int index = -1;
 
         /* Check if packet is within the receiver window */
-        for (int i = 0; i < WINDOWSIZE; i++) {
+        for (i = 0; i < WINDOWSIZE; i++) {
             int expected_seqnum = (rcv_base + i) % SEQSPACE;
             if (expected_seqnum == seqnum) {
                 index = i;
@@ -159,16 +162,16 @@ void B_input(struct pkt packet)
         }
 
         if (index != -1 && !is_received[index]) {
+            struct pkt sendpkt;
             /* Buffer the packet and mark as received */
             receiver_buffer[index] = packet;
             is_received[index] = true;
             packets_received++;
 
             /* Send ACK for this packet */
-            struct pkt sendpkt;
             sendpkt.seqnum = NOTINUSE;
             sendpkt.acknum = seqnum;
-            for (int i = 0; i < 20; i++)
+            for (i = 0; i < 20; i++)
                 sendpkt.payload[i] = '0';
             sendpkt.checksum = ComputeChecksum(sendpkt);
             if (TRACE > 0)
@@ -183,7 +186,7 @@ void B_input(struct pkt packet)
             tolayer5(B, receiver_buffer[0].payload);
 
             /* Shift the buffer */
-            for (int i = 0; i < WINDOWSIZE - 1; i++) {
+            for (i = 0; i < WINDOWSIZE - 1; i++) {
                 receiver_buffer[i] = receiver_buffer[i + 1];
                 is_received[i] = is_received[i + 1];
             }
@@ -199,8 +202,9 @@ void B_input(struct pkt packet)
 /* Initialization for receiver (B) */
 void B_init(void)
 {
+    int i;
     rcv_base = 0;
-    for (int i = 0; i < WINDOWSIZE; i++)
+    for (i = 0; i < WINDOWSIZE; i++)
         is_received[i] = false;
 }
 
