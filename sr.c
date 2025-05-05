@@ -27,6 +27,14 @@
 #define SEQSPACE 12     /* the sequence space for SR must be at least 2 * windowsize */
 #define NOTINUSE (-1)   /* used to fill header fields that are not being used */
 
+/* Function prototypes to prevent nested function warnings */
+void A_timerinterrupt(void);
+void A_init(void);
+void B_input(struct pkt packet);
+void B_init(void);
+void B_output(struct msg message);
+void B_timerinterrupt(void);
+
 /* generic procedure to compute the checksum of a packet.  Used by both sender and receiver
    the simulator will overwrite part of your packet with 'z's.  It will not overwrite your
    original checksum.  This procedure must generate a different checksum to the original if
@@ -97,7 +105,6 @@ void A_output(struct msg message)
     tolayer3(A, sendpkt);
 
     /* start timer for this packet */
-    /* start timer for this packet */
     if (windowcount == 1) {
       starttimer(A, RTT);
     }
@@ -151,8 +158,7 @@ void A_input(struct pkt packet)
         if (pos == windowfirst) {
           stoptimer(A);
         
-        /* If this is the base (windowfirst), move window forward over all consecutive ACKed packets */
-        if (pos == windowfirst) {
+          /* If this is the base (windowfirst), move window forward over all consecutive ACKed packets */
           while (windowcount > 0 && acked[buffer[windowfirst].seqnum] == 1) {
             windowfirst = (windowfirst + 1) % WINDOWSIZE;
             windowcount--;
@@ -178,12 +184,8 @@ void A_input(struct pkt packet)
 }
 
 /* called when A's timer goes off */
-// Fix: Remove unused variable
 void A_timerinterrupt(void)
 {
-  // Remove this line:
-  // int i;
-  
   if (TRACE > 0)
     printf("----A: time out, resending packets!\n");
   
@@ -235,8 +237,6 @@ static int B_received[SEQSPACE]; /* tracks which packets have been received */
 static int B_window_base;        /* base sequence number of receiver window */
 
 /* called from layer 3, when a packet arrives for layer 4 at B*/
-// Fix: Move variable declarations to the top of the function
-// Fix B_input() to properly handle packet delivery
 void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
@@ -322,6 +322,7 @@ void B_input(struct pkt packet)
   /* send out packet */
   tolayer3(B, sendpkt);
 }
+
 /* the following routine will be called once (only) before any other */
 /* entity B routines are called. You can use it to do any initialization */
 void B_init(void)
@@ -345,9 +346,11 @@ void B_init(void)
 /* Note that with simplex transfer from a-to-B, there is no B_output() */
 void B_output(struct msg message)
 {
+  /* Not needed for this assignment, but implementation is required to avoid warnings */
 }
 
 /* called when B's timer goes off */
 void B_timerinterrupt(void)
 {
+  /* Not needed for this assignment, but implementation is required to avoid warnings */
 }
