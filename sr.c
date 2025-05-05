@@ -260,30 +260,29 @@ void B_input(struct pkt packet)
       B_buffer[relative_seq] = packet;
       B_received[packet.seqnum] = 1;
       
-      /* If this is the expected packet, deliver it and any consecutive buffered packets */
-      if (packet.seqnum == expectedseqnum) {
+    /* If this is the expected packet, deliver it and any consecutive buffered packets */
+    if (packet.seqnum == expectedseqnum) {
         /* Deliver this packet */
         tolayer5(B, packet.payload);
-        packets_received++;
+        packets_received++;  // Only increment counter when delivering to application layer
         
         /* Update expected sequence number */
         expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
         
         /* Check for consecutive packets that can now be delivered */
         while (B_received[expectedseqnum] == 1) {
-          /* Deliver buffered packet */
-          int relative_pos = (expectedseqnum - B_window_base + SEQSPACE) % SEQSPACE;
-          tolayer5(B, B_buffer[relative_pos].payload);
-          packets_received++;
-          
-          /* Update expected sequence number */
-          expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+            /* Deliver buffered packet */
+            int relative_pos = (expectedseqnum - B_window_base + SEQSPACE) % SEQSPACE;
+            tolayer5(B, B_buffer[relative_pos].payload);
+            packets_received++;  // Count each delivery
+            
+            /* Update expected sequence number */
+            expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
         }
         
         /* Slide window to new base */
         B_window_base = expectedseqnum;
-      }
-      
+    }
       /* Send ACK for the received packet */
       sendpkt.acknum = packet.seqnum;
     }
