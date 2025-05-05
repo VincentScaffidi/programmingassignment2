@@ -187,7 +187,7 @@ void A_input(struct pkt packet)
 void A_timerinterrupt(void)
 {
   if (TRACE > 0)
-    printf("----A: time out, resending packets!\n");
+    printf("----A: time out,resend packets!\n");
   
   /* Find the oldest unacked packet - should be at windowfirst */
   /* In SR, we only resend the specific timed-out packet */
