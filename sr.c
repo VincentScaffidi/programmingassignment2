@@ -79,7 +79,7 @@ void A_output(struct msg message)
   /* if not blocked waiting on ACK */
   if (windowcount < WINDOWSIZE) {
     if (TRACE > 1)
-      printf("----A: New message arrives, send window is not full, send new message to layer3!\n");
+      printf("----A: New message arrives, send window is not full, send new messge to layer3!\n");
 
     /* create packet */
     sendpkt.seqnum = A_nextseqnum;
@@ -235,6 +235,7 @@ static int B_nextseqnum;         /* the sequence number for the next packets sen
 static struct pkt B_buffer[WINDOWSIZE]; /* buffer for out-of-order packets */
 static int B_received[SEQSPACE]; /* tracks which packets have been received */
 static int B_window_base;        /* base sequence number of receiver window */
+static int correct_packets_received_at_B; /* Counter for all correct packet receptions */
 
 /* called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(struct pkt packet)
@@ -248,6 +249,7 @@ void B_input(struct pkt packet)
   if (!IsCorrupted(packet)) {
     if (TRACE > 0)
       printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
+    correct_packets_received_at_B++; /* Increment counter for every correct packet received */
     
     /* Calculate relative position to see if in window */
     relative_seq = (packet.seqnum - B_window_base + SEQSPACE) % SEQSPACE;
@@ -332,6 +334,7 @@ void B_init(void)
   expectedseqnum = 0;
   B_nextseqnum = 1;
   B_window_base = 0;
+  correct_packets_received_at_B = 0; /* Initialize counter */
   
   /* Initialize receiver buffer status */
   for (i = 0; i < SEQSPACE; i++) {
