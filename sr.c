@@ -243,7 +243,7 @@ void B_input(struct pkt packet)
   /* if not corrupted */
   if (!IsCorrupted(packet)) {
     if (TRACE > 0)
-      printf("----B: packet %d is not corrupted\n", packet.seqnum);
+      printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
     
     /* Calculate relative position to see if in window */
     relative_seq = (packet.seqnum - B_window_base + SEQSPACE) % SEQSPACE;
@@ -252,7 +252,7 @@ void B_input(struct pkt packet)
     if (relative_seq < WINDOWSIZE) {
       /* Valid packet within window */
       if (TRACE > 0)
-        printf("----B: packet %d is within window\n", packet.seqnum);
+        printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
       
       /* Store the packet and mark it as received */
       B_buffer[relative_seq] = packet;
