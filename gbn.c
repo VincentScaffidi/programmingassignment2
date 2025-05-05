@@ -88,10 +88,18 @@ void A_output(struct msg message)
     buffer[windowlast] = sendpkt;
     windowcount++;
 
+    /* track that this packet has not been ACKed yet */
+    acked[sendpkt.seqnum] = 0;
+    
+    /* set timer status for this packet */
+    timer_status[windowlast] = 1;
+
     /* send out packet */
     if (TRACE > 0)
       printf("Sending packet %d to layer 3\n", sendpkt.seqnum);
     tolayer3 (A, sendpkt);
+
+    starttimer(A, RTT);
 
     /* start timer if first packet in window */
     if (windowcount == 1)
