@@ -233,12 +233,13 @@ static int B_window_base;        /* base sequence number of receiver window */
 
 /* called from layer 3, when a packet arrives for layer 4 at B*/
 // Fix: Move variable declarations to the top of the function
+// Fix B_input() to properly handle packet delivery
 void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
   int i;
-  int relative_seq;  // Moved from below
-  int old_relative_seq; // Moved from below
+  int relative_seq;
+  int old_relative_seq;
   
   /* if not corrupted */
   if (!IsCorrupted(packet)) {
@@ -251,8 +252,6 @@ void B_input(struct pkt packet)
     /* Check if packet is within the receiver window */
     if (relative_seq < WINDOWSIZE) {
       /* Valid packet within window */
-      if (TRACE > 0)
-        printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
       
       /* Store the packet and mark it as received */
       B_buffer[relative_seq] = packet;
@@ -287,8 +286,6 @@ void B_input(struct pkt packet)
     }
     else {
       /* Packet is outside the window */
-      if (TRACE > 0)
-        printf("----B: packet %d is outside receiver window\n", packet.seqnum);
       
       /* If it's an old packet that we've already ACKed, resend the ACK */
       old_relative_seq = (packet.seqnum - B_window_base + SEQSPACE + WINDOWSIZE) % SEQSPACE;
@@ -322,7 +319,6 @@ void B_input(struct pkt packet)
   /* send out packet */
   tolayer3(B, sendpkt);
 }
-
 /* the following routine will be called once (only) before any other */
 /* entity B routines are called. You can use it to do any initialization */
 void B_init(void)
