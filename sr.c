@@ -175,9 +175,11 @@ void A_input(struct pkt packet)
 }
 
 /* called when A's timer goes off */
+// Fix: Remove unused variable
 void A_timerinterrupt(void)
 {
-  int i;
+  // Remove this line:
+  // int i;
   
   if (TRACE > 0)
     printf("----A: time out, resending packets!\n");
