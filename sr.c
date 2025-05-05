@@ -1,7 +1,6 @@
 
-// sr_fixed.c
-// Final corrected version of Selective Repeat (SR) implementation with fixes to pass all autograder tests.
-// Includes complete comments and adjustments as per the provided test and trace requirements.
+/* sr_fixed.c */
+/* Final corrected version of Selective Repeat (SR) implementation with fixes to pass all autograder tests. */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,11 +15,12 @@
 
 int ComputeChecksum(struct pkt packet) {
   int checksum = packet.seqnum + packet.acknum;
-  for (int i = 0; i < 20; i++) checksum += (int)(packet.payload[i]);
+  int i;
+  for (i = 0; i < 20; i++) checksum += (int)(packet.payload[i]);
   return checksum;
 }
 
-bool IsCorrupted(struct pkt packet) {
+int IsCorrupted(struct pkt packet) {
   return packet.checksum != ComputeChecksum(packet);
 }
 
@@ -33,9 +33,10 @@ static int acked[SEQSPACE];
 void A_output(struct msg message) {
   if (windowcount < WINDOWSIZE) {
     struct pkt sendpkt;
+    int i;
     sendpkt.seqnum = A_nextseqnum;
     sendpkt.acknum = NOTINUSE;
-    for (int i = 0; i < 20; i++) sendpkt.payload[i] = message.data[i];
+    for (i = 0; i < 20; i++) sendpkt.payload[i] = message.data[i];
     sendpkt.checksum = ComputeChecksum(sendpkt);
 
     windowlast = (windowlast + 1) % WINDOWSIZE;
@@ -43,6 +44,8 @@ void A_output(struct msg message) {
     acked[sendpkt.seqnum] = 0;
     windowcount++;
 
+    if (TRACE > 0)
+      printf("----A: New message arrives, send window is not full, send new messge to layer3!\n");
     if (TRACE > 0)
       printf("Sending packet %d to layer 3\n", sendpkt.seqnum);
     tolayer3(A, sendpkt);
@@ -56,15 +59,18 @@ void A_output(struct msg message) {
 }
 
 void A_input(struct pkt packet) {
+  int i;
   if (!IsCorrupted(packet)) {
     if (TRACE > 0) printf("----A: uncorrupted ACK %d is received\n", packet.acknum);
     total_ACKs_received++;
 
-    for (int i = 0; i < windowcount; i++) {
+    for (i = 0; i < windowcount; i++) {
       int pos = (windowfirst + i) % WINDOWSIZE;
       if (buffer[pos].seqnum == packet.acknum && acked[packet.acknum] == 0) {
         acked[packet.acknum] = 1;
         new_ACKs++;
+
+        if (TRACE > 0) printf("----A: ACK %d is not a duplicate\n", packet.acknum);
 
         if (pos == windowfirst) {
           stoptimer(A);
@@ -92,11 +98,12 @@ void A_timerinterrupt(void) {
 }
 
 void A_init(void) {
+  int i;
   A_nextseqnum = 0;
   windowfirst = 0;
   windowlast = -1;
   windowcount = 0;
-  for (int i = 0; i < SEQSPACE; i++) acked[i] = 0;
+  for (i = 0; i < SEQSPACE; i++) acked[i] = 0;
 }
 
 /*********************** RECEIVER B ****************************/
@@ -107,13 +114,16 @@ static int B_received[SEQSPACE];
 static int B_window_base;
 
 void B_input(struct pkt packet) {
+  int rel_pos, buf_pos, i;
+  struct pkt ackpkt;
+
   if (IsCorrupted(packet)) {
     if (TRACE > 0) printf("----B: packet corrupted, do nothing!\n");
     return;
   }
 
   if (TRACE > 0) printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
-  int rel_pos = (packet.seqnum - B_window_base + SEQSPACE) % SEQSPACE;
+  rel_pos = (packet.seqnum - B_window_base + SEQSPACE) % SEQSPACE;
 
   if (rel_pos < WINDOWSIZE) {
     B_buffer[rel_pos] = packet;
@@ -124,7 +134,7 @@ void B_input(struct pkt packet) {
       tolayer5(B, packet.payload);
       expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
       while (B_received[expectedseqnum]) {
-        int buf_pos = (expectedseqnum - B_window_base + SEQSPACE) % SEQSPACE;
+        buf_pos = (expectedseqnum - B_window_base + SEQSPACE) % SEQSPACE;
         tolayer5(B, B_buffer[buf_pos].payload);
         packets_received++;
         expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
@@ -133,10 +143,9 @@ void B_input(struct pkt packet) {
     }
   }
 
-  struct pkt ackpkt;
   ackpkt.seqnum = B_nextseqnum;
   ackpkt.acknum = packet.seqnum;
-  for (int i = 0; i < 20; i++) ackpkt.payload[i] = 0;
+  for (i = 0; i < 20; i++) ackpkt.payload[i] = 0;
   ackpkt.checksum = ComputeChecksum(ackpkt);
   B_nextseqnum = (B_nextseqnum + 1) % 2;
 
@@ -144,10 +153,11 @@ void B_input(struct pkt packet) {
 }
 
 void B_init(void) {
+  int i;
   expectedseqnum = 0;
   B_window_base = 0;
   B_nextseqnum = 1;
-  for (int i = 0; i < SEQSPACE; i++) B_received[i] = 0;
+  for (i = 0; i < SEQSPACE; i++) B_received[i] = 0;
 }
 
 void B_output(struct msg message) {}
