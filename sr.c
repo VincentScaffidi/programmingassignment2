@@ -97,7 +97,10 @@ void A_output(struct msg message)
     tolayer3(A, sendpkt);
 
     /* start timer for this packet */
-    starttimer(A, RTT);
+    /* start timer for this packet */
+    if (windowcount == 1) {
+      starttimer(A, RTT);
+    }
 
     /* get next sequence number, wrap back to 0 */
     A_nextseqnum = (A_nextseqnum + 1) % SEQSPACE;
@@ -145,8 +148,8 @@ void A_input(struct pkt packet)
         acked[packet.acknum] = 1;
         
         /* Stop timer for this packet */
-        stoptimer(A);
-        timer_status[pos] = 0;
+        if (pos == windowfirst) {
+          stoptimer(A);
         
         /* If this is the base (windowfirst), move window forward over all consecutive ACKed packets */
         if (pos == windowfirst) {
