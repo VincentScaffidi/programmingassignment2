@@ -62,6 +62,7 @@ static int timer_status[WINDOWSIZE];   /* array for tracking timer status for ea
 static int windowfirst, windowlast;    /* array indexes of the first/last packet awaiting ACK */
 static int windowcount;                /* the number of packets currently awaiting an ACK */
 static int A_nextseqnum;               /* the next sequence number to be used by the sender */
+static int acked[SEQSPACE];            /* array to track which packets have been ACKed */
 
 /* called from layer 5 (application layer), passed the message to be sent to other side */
 void A_output(struct msg message)
@@ -197,6 +198,11 @@ void A_init(void)
 		     so initially this is set to -1
 		   */
   windowcount = 0;
+
+
+  for (i = 0; i < SEQSPACE; i++) {
+  acked[i] = 0;
+  }
 }
 
 
