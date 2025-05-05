@@ -13,6 +13,7 @@
 struct buffered_pkt {
     struct pkt packet;
     bool is_acked;
+    bool is_sent;
 };
 
 /* Sender (A) variables */
@@ -44,6 +45,16 @@ bool IsCorrupted(struct pkt packet)
     return packet.checksum != ComputeChecksum(packet);
 }
 
+/* Helper function to check if a sequence number is within the window */
+bool is_in_window(int seqnum, int base, int window_size, int seq_space) {
+    int end = (base + window_size - 1) % seq_space;
+    if (base <= end) {
+        return seqnum >= base && seqnum <= end;
+    } else {
+        return seqnum >= base || seqnum <= end;
+    }
+}
+
 /* Sender (A) functions */
 
 /* Called from layer 5, passed the data to be sent to other side */
@@ -61,13 +72,14 @@ void A_output(struct msg message)
         /* Store in buffer at position windowcount */
         buffer[windowcount].packet = sendpkt;
         buffer[windowcount].is_acked = false;
+        buffer[windowcount].is_sent = true;
 
         /* Send the packet */
         if (TRACE > 0)
             printf("Sending packet %d to layer 3\n", sendpkt.seqnum);
         tolayer3(A, sendpkt);
 
-        /* Start timer if this is the first packet */
+        /* Start timer if this is the first packet in the window */
         if (windowcount == 0)
             starttimer(A, RTT);
 
@@ -88,7 +100,7 @@ void A_input(struct pkt packet)
         int acknum = packet.acknum;
         /* Mark the packet as acknowledged if it’s in the window */
         for (i = 0; i < windowcount; i++) {
-            if (buffer[i].packet.seqnum == acknum) {
+            if (buffer[i].packet.seqnum == acknum && !buffer[i].is_acked) {
                 if (TRACE > 0)
                     printf("----A: ACK %d received, marking packet as acked\n", acknum);
                 buffer[i].is_acked = true;
@@ -107,9 +119,13 @@ void A_input(struct pkt packet)
             base = (base + 1) % SEQSPACE;
         }
 
-        /* Stop timer if window is empty */
-        if (windowcount == 0)
+        /* Manage timer: stop if window is empty, else restart for the new base */
+        if (windowcount == 0) {
             stoptimer(A);
+        } else {
+            stoptimer(A);
+            starttimer(A, RTT);
+        }
     } else {
         if (TRACE > 0)
             printf("----A: corrupted ACK received, ignored\n");
@@ -140,6 +156,11 @@ void A_init(void)
     base = 0;
     nextseqnum = 0;
     windowcount = 0;
+    int i;
+    for (i = 0; i < WINDOWSIZE; i++) {
+        buffer[i].is_sent = false;
+        buffer[i].is_acked = false;
+    }
 }
 
 /* Receiver (B) functions */
