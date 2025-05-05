@@ -184,18 +184,21 @@ void A_input(struct pkt packet)
 void A_timerinterrupt(void)
 {
   int i;
-
+  
   if (TRACE > 0)
-    printf("----A: time out,resend packets!\n");
-
-  for(i=0; i<windowcount; i++) {
-
+    printf("----A: time out, resending packets!\n");
+  
+  /* Find the oldest unacked packet - should be at windowfirst */
+  /* In SR, we only resend the specific timed-out packet */
+  if (windowcount > 0) {
     if (TRACE > 0)
-      printf ("---A: resending packet %d\n", (buffer[(windowfirst+i) % WINDOWSIZE]).seqnum);
-
-    tolayer3(A,buffer[(windowfirst+i) % WINDOWSIZE]);
+      printf("---A: resending packet %d\n", buffer[windowfirst].seqnum);
+    
+    tolayer3(A, buffer[windowfirst]);
     packets_resent++;
-    if (i==0) starttimer(A,RTT);
+    
+    /* Restart timer for this packet */
+    starttimer(A, RTT);
   }
 }
 
