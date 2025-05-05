@@ -227,8 +227,11 @@ void A_init(void)
 
 /********* Receiver (B)  variables and procedures ************/
 
-static int expectedseqnum; /* the sequence number expected next by the receiver */
-static int B_nextseqnum;   /* the sequence number for the next packets sent by B */
+static int expectedseqnum;       /* the sequence number expected next by the receiver */
+static int B_nextseqnum;         /* the sequence number for the next packets sent by B */
+static struct pkt B_buffer[WINDOWSIZE]; /* buffer for out-of-order packets */
+static int B_received[SEQSPACE]; /* tracks which packets have been received */
+static int B_window_base;        /* base sequence number of receiver window */
 
 
 /* called from layer 3, when a packet arrives for layer 4 at B*/
@@ -283,6 +286,10 @@ void B_init(void)
 {
   expectedseqnum = 0;
   B_nextseqnum = 1;
+  B_window_base = 0;
+  for (i = 0; i < SEQSPACE; i++) {
+  B_received[i] = 0;
+  }
 }
 
 /******************************************************************************
