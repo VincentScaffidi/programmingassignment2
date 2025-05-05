@@ -232,10 +232,13 @@ static int B_received[SEQSPACE]; /* tracks which packets have been received */
 static int B_window_base;        /* base sequence number of receiver window */
 
 /* called from layer 3, when a packet arrives for layer 4 at B*/
+// Fix: Move variable declarations to the top of the function
 void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
   int i;
+  int relative_seq;  // Moved from below
+  int old_relative_seq; // Moved from below
   
   /* if not corrupted */
   if (!IsCorrupted(packet)) {
@@ -243,7 +246,7 @@ void B_input(struct pkt packet)
       printf("----B: packet %d is not corrupted\n", packet.seqnum);
     
     /* Calculate relative position to see if in window */
-    int relative_seq = (packet.seqnum - B_window_base + SEQSPACE) % SEQSPACE;
+    relative_seq = (packet.seqnum - B_window_base + SEQSPACE) % SEQSPACE;
     
     /* Check if packet is within the receiver window */
     if (relative_seq < WINDOWSIZE) {
@@ -288,7 +291,7 @@ void B_input(struct pkt packet)
         printf("----B: packet %d is outside receiver window\n", packet.seqnum);
       
       /* If it's an old packet that we've already ACKed, resend the ACK */
-      int old_relative_seq = (packet.seqnum - B_window_base + SEQSPACE + WINDOWSIZE) % SEQSPACE;
+      old_relative_seq = (packet.seqnum - B_window_base + SEQSPACE + WINDOWSIZE) % SEQSPACE;
       if (old_relative_seq < WINDOWSIZE) {
         sendpkt.acknum = packet.seqnum;
       }
