@@ -214,7 +214,6 @@ void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
   int i;
-  int relative_seq;
   
   /* if not corrupted */
   if (!IsCorrupted(packet)) {
@@ -222,7 +221,7 @@ void B_input(struct pkt packet)
       printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
     
     /* Calculate relative position to see if in window */
-    relative_seq = (packet.seqnum - B_window_base + SEQSPACE) % SEQSPACE;
+    int relative_seq = (packet.seqnum - B_window_base + SEQSPACE) % SEQSPACE;
     
     /* Check if packet is within the receiver window */
     if (relative_seq < WINDOWSIZE) {
@@ -232,42 +231,34 @@ void B_input(struct pkt packet)
       B_buffer[relative_seq] = packet;
       B_received[packet.seqnum] = 1;
       
-      /* If this is the expected packet, deliver it and any consecutive buffered packets */
+      /* Count each received packet */
+      packets_received++;
+      
+      /* If this is the expected packet (the window base), deliver it and any consecutive buffered packets */
       if (packet.seqnum == B_window_base) {
-        /* Deliver this packet */
+        /* Deliver this packet to application layer */
         tolayer5(B, packet.payload);
-        packets_received++;
         
-        /* Move window base forward over all consecutively received packets */
+        /* Advance window base */
         B_window_base = (B_window_base + 1) % SEQSPACE;
         
-        /* Check for consecutive packets that can now be delivered */
+        /* Check for consecutive packets that can be delivered */
         while (B_received[B_window_base] == 1) {
           /* Get position in buffer */
-          int pos = (B_window_base - (B_window_base - relative_seq + 1) % SEQSPACE + SEQSPACE) % SEQSPACE;
+          int pos = (B_window_base - B_window_base + SEQSPACE) % SEQSPACE;
+          if (pos >= WINDOWSIZE) pos = 0;
           
           /* Deliver buffered packet */
           tolayer5(B, B_buffer[pos].payload);
-          packets_received++;
           
           /* Advance window base */
           B_window_base = (B_window_base + 1) % SEQSPACE;
         }
       }
-      
-      /* Send ACK for the received packet */
-      sendpkt.acknum = packet.seqnum;
-    }
-    else if (relative_seq >= WINDOWSIZE && relative_seq < SEQSPACE) {
-      /* This is a previously ACKed packet, resend ACK */
-      sendpkt.acknum = packet.seqnum;
-    }
-    else {
-      /* Packet is outside valid range, ignore */
-      return;
     }
     
-    /* create ACK packet */
+    /* Always send ACK for received packet */
+    sendpkt.acknum = packet.seqnum;
     sendpkt.seqnum = B_nextseqnum;
     B_nextseqnum = (B_nextseqnum + 1) % 2;
     
