@@ -236,7 +236,6 @@ static struct pkt B_buffer[WINDOWSIZE]; /* buffer for out-of-order packets */
 static int B_received[SEQSPACE]; /* tracks which packets have been received */
 static int B_window_base;        /* base sequence number of receiver window */
 
-/* called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
@@ -256,34 +255,38 @@ void B_input(struct pkt packet)
     if (relative_seq < WINDOWSIZE) {
       /* Valid packet within window */
       
-      /* Store the packet and mark it as received */
-      B_buffer[relative_seq] = packet;
-      B_received[packet.seqnum] = 1;
-      
-    /* If this is the expected packet, deliver it and any consecutive buffered packets */
-    if (packet.seqnum == expectedseqnum) {
-        /* Deliver this packet */
-        tolayer5(B, packet.payload);
-        packets_received++;  /* Only increment counter when delivering to application layer */
+      /* Only mark as received and store if not already received */
+      if (B_received[packet.seqnum] == 0) {
+        /* Store the packet and mark it as received */
+        B_buffer[relative_seq] = packet;
+        B_received[packet.seqnum] = 1;
         
-        /* Update expected sequence number */
-        expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
-        
-        /* Check for consecutive packets that can now be delivered */
-        while (B_received[expectedseqnum] == 1) {
+        /* If this is the expected packet, deliver it and any consecutive buffered packets */
+        if (packet.seqnum == expectedseqnum) {
+          /* Deliver this packet */
+          tolayer5(B, packet.payload);
+          packets_received++; /* Count each unique packet delivered to application */
+          
+          /* Update expected sequence number */
+          expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+          
+          /* Check for consecutive packets that can now be delivered */
+          while (B_received[expectedseqnum] == 1) {
             /* Deliver buffered packet */
             int relative_pos = (expectedseqnum - B_window_base + SEQSPACE) % SEQSPACE;
             tolayer5(B, B_buffer[relative_pos].payload);
-            packets_received++;  /* Count each delivery */
+            packets_received++; /* Count each unique packet delivered to application */
             
             /* Update expected sequence number */
             expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+          }
+          
+          /* Slide window to new base */
+          B_window_base = expectedseqnum;
         }
-        
-        /* Slide window to new base */
-        B_window_base = expectedseqnum;
-    }
-      /* Send ACK for the received packet */
+      }
+      
+      /* Send ACK for the received packet regardless of whether it's a duplicate */
       sendpkt.acknum = packet.seqnum;
     }
     else {
